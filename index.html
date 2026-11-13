@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="杜邦分析工具：把 ROE 拆成净利率、总资产周转率与权益乘数，并用连环替代法分解相邻年度的变动来源。">
+  <title>杜邦分析工具 · ROE 拆解</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --ink: #17202e;
+      --ink-2: #3d4859;
+      --muted: #5f6d80;
+      --faint: #6f7c8f;
+      --line: #e5ebf3;
+      --card: #ffffff;
+      --brand: #1f5fae;
+      --brand-2: #17457f;
+      --brand-50: #eef4fd;
+      --navy: #0f2d55;
+      --pos: #0d7a63;
+      --pos-bg: #e7f6f1;
+      --neg: #b0443b;
+      --neg-bg: #fdeeec;
+      --warn-bg: #fffaf0;
+      --warn-line: #f2e0c0;
+      --warn-ink: #8a5a12;
+      --radius: 16px;
+      --shadow-sm: 0 1px 2px rgba(15, 35, 70, .05);
+      --shadow: 0 1px 2px rgba(15, 35, 70, .04), 0 14px 32px -20px rgba(15, 35, 70, .28);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font: 14px/1.65 "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Segoe UI", system-ui, sans-serif;
+      background:
+        radial-gradient(1100px 520px at 8% -12%, #e6effc 0%, rgba(230, 239, 252, 0) 62%),
+        radial-gradient(900px 460px at 102% -4%, #f0eafb 0%, rgba(240, 234, 251, 0) 58%),
+        var(--bg);
+      background-attachment: fixed;
+      -webkit-font-smoothing: antialiased;
+    }
+    ::selection { background: #cfe1fa; color: var(--navy); }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 26px 20px 56px; }
+
+    /* ---------- 顶部 ---------- */
+    .banner {
+      display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+      gap: 8px; text-align: center;
+      background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-ink);
+      border-radius: 12px; padding: 9px 14px; font-size: 12.5px; margin: 0 0 22px;
+    }
+    .banner .dot {
+      width: 7px; height: 7px; border-radius: 50%; background: #dfa03a; flex: none;
+      box-shadow: 0 0 0 3px rgba(223, 160, 58, .18);
+    }
+    .brandline { display: flex; align-items: flex-start; gap: 16px; margin: 0 0 22px; }
+    .logo {
+      flex: none; width: 46px; height: 46px; border-radius: 14px;
+      display: grid; place-items: center;
+      font-size: 20px; font-weight: 700; color: #fff;
+      background: linear-gradient(145deg, #2a6fc4, #123a6c);
+      box-shadow: 0 10px 22px -10px rgba(18, 58, 108, .85), inset 0 1px 0 rgba(255, 255, 255, .28);
+    }
+    h1 { font-size: 26px; line-height: 1.25; font-weight: 700; letter-spacing: -.015em; margin: 0 0 4px; }
+    .lead { color: var(--muted); margin: 0; font-size: 14px; max-width: 62ch; text-wrap: pretty; }
+
+    /* ---------- 卡片 ---------- */
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 20px 22px; margin: 0 0 16px; box-shadow: var(--shadow);
+    }
+    .head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 14px; }
+    .tag {
+      font-size: 11.5px; font-weight: 650; letter-spacing: .08em;
+      color: var(--brand); background: var(--brand-50); border-radius: 7px; padding: 3px 8px;
+      white-space: nowrap;
+    }
+    .head h2 { font-size: 16.5px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
+    .hint { color: var(--muted); font-size: 12.5px; margin-left: auto; }
+    .desc { color: var(--ink-2); margin: 0 0 16px; font-size: 13.5px; }
+    code {
+      font: 12px/1.5 ui-monospace, "Cascadia Code", "Consolas", monospace;
+      background: #f3f6fb; border: 1px solid var(--line); border-radius: 6px;
+      padding: 1px 5px; color: #2c4a72; word-break: break-word;
+    }
+
+    /* ---------- 表单控件 ---------- */
+    .field { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 16px; }
+    .field-label { font-size: 12.5px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+    .field-note { font-size: 12px; color: var(--faint); }
+    .segmented {
+      display: inline-flex; gap: 2px; padding: 3px;
+      background: #f1f4f9; border: 1px solid var(--line); border-radius: 12px;
+    }
+    .segmented label { position: relative; margin: 0; }
+    .segmented input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: pointer; }
+    .segmented span {
+      display: block; padding: 5px 15px; border-radius: 9px;
+      font-size: 13px; color: var(--muted);
+      transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+    }
+    .segmented input:checked + span {
+      background: #fff; color: var(--brand); font-weight: 600;
+      box-shadow: 0 1px 2px rgba(15, 35, 70, .1), 0 0 0 1px rgba(31, 95, 174, .1);
+    }
+    .segmented input:focus-visible + span { outline: 2px solid var(--brand); outline-offset: 2px; }
+    .btns { display: flex; flex-wrap: wrap; gap: 10px; }
+    .btn {
+      appearance: none; border: 1px solid transparent; border-radius: 11px;
+      padding: 9px 17px; font: inherit; font-size: 13.5px; font-weight: 600;
+      cursor: pointer; transition: background .18s ease, box-shadow .18s ease, border-color .18s ease, transform .12s ease, color .18s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+    .btn-primary {
+      color: #fff; background: linear-gradient(180deg, #2468bd, #1b5196);
+      box-shadow: 0 8px 18px -10px rgba(27, 81, 150, .95), inset 0 1px 0 rgba(255, 255, 255, .2);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(180deg, #2a74cf, #1f5aa4);
+      box-shadow: 0 12px 22px -12px rgba(27, 81, 150, .95), inset 0 1px 0 rgba(255, 255, 255, .24);
+    }
+    .btn-ghost { background: #fff; border-color: #dbe4ef; color: var(--ink-2); box-shadow: var(--shadow-sm); }
+    .btn-ghost:hover { border-color: #bfd3ea; background: #f8fbff; color: var(--brand); }
+    .err {
+      display: flex; gap: 8px; margin: 14px 0 0; padding: 10px 12px;
+      border-radius: 10px; background: var(--neg-bg); border: 1px solid #f6cfc9;
+      color: #98352c; font-size: 12.5px; line-height: 1.55;
+    }
+    .err::before {
+      content: "!"; flex: none; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%;
+      background: #d9584a; color: #fff; font-size: 11px; font-weight: 700;
+      display: grid; place-items: center;
+    }
+
+    /* ---------- 结果主视觉 ---------- */
+    .hero {
+      position: relative; overflow: hidden; border-radius: 14px; padding: 20px 22px;
+      color: #fff; background: linear-gradient(135deg, #0f2d55 0%, #17457f 55%, #1f5fae 100%);
+      box-shadow: 0 16px 34px -20px rgba(15, 45, 85, .9);
+    }
+    .hero::before {
+      content: ""; position: absolute; width: 300px; height: 300px; right: -100px; top: -140px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(130, 185, 255, .38), rgba(130, 185, 255, 0) 70%);
+    }
+    .hero::after {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background-image: linear-gradient(rgba(255, 255, 255, .05) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255, 255, 255, .05) 1px, transparent 1px);
+      background-size: 34px 34px;
+      mask-image: radial-gradient(120% 120% at 100% 0%, #000 0%, transparent 62%);
+      -webkit-mask-image: radial-gradient(120% 120% at 100% 0%, #000 0%, transparent 62%);
+    }
+    .hero-label {
+      position: relative; display: flex; align-items: center; gap: 8px;
+      font-size: 12.5px; letter-spacing: .03em; color: rgba(255, 255, 255, .72);
+    }
+    .hero-label b { color: #fff; font-weight: 650; }
+    .hero-pill {
+      font-size: 10.5px; font-weight: 700; letter-spacing: .1em;
+      padding: 1px 7px; border-radius: 6px; color: #dbe9ff;
+      background: rgba(255, 255, 255, .13); border: 1px solid rgba(255, 255, 255, .18);
+    }
+    .hero-value {
+      position: relative; margin: 6px 0 0; line-height: 1.08; font-weight: 700;
+      font-size: clamp(36px, 7vw, 48px); letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+      text-shadow: 0 1px 0 rgba(0, 0, 0, .12);
+    }
+    .hero-unit { font-size: .5em; font-weight: 600; margin-left: 2px; color: rgba(255, 255, 255, .7); vertical-align: .14em; }
+    .hero-delta {
+      position: relative; display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 10px; padding: 3px 10px; border-radius: 999px;
+      font-size: 12.5px; color: #dce9ff;
+      background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .16);
+      font-variant-numeric: tabular-nums;
+    }
+    .hero-delta span.arrow { font-size: 12px; line-height: 1; }
+    .hero-delta.down { color: #ffd9d3; background: rgba(255, 120, 100, .16); border-color: rgba(255, 150, 130, .3); }
+    .hero-formula {
+      position: relative; margin-top: 16px; padding-top: 13px;
+      border-top: 1px solid rgba(255, 255, 255, .14);
+      font-size: 12.5px; color: rgba(255, 255, 255, .74); font-variant-numeric: tabular-nums;
+    }
+    .hero-formula b { color: #fff; font-weight: 650; }
+
+    /* ---------- 因子卡片 ---------- */
+    .factors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0 0; }
+    .factor {
+      position: relative; overflow: hidden;
+      background: #fbfcfe; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+    }
+    .factor::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--accent, var(--brand)); opacity: .8; }
+    .factor .k { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+    .factor .v {
+      font-size: 19px; font-weight: 650; margin: 2px 0 0; letter-spacing: -.01em;
+      font-variant-numeric: tabular-nums;
+    }
+    .factor .f { font-size: 11.5px; color: var(--faint); margin-top: 3px; }
+    .verify {
+      display: flex; align-items: center; gap: 6px; margin: 12px 0 0;
+      font-size: 12px; color: var(--muted);
+    }
+    .verify::before { content: "✓"; color: var(--pos); font-weight: 700; }
+    .verify.bad { color: var(--neg); }
+    .verify.bad::before { content: "!"; }
+
+    /* ---------- 表格 ---------- */
+    .table-wrap { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
+    table { width: 100%; min-width: 560px; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    thead th {
+      text-align: left; font-size: 11.5px; font-weight: 600; letter-spacing: .06em;
+      color: var(--muted); background: #f7f9fc; padding: 9px 10px;
+      border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+    }
+    thead th:first-child { border-left: 1px solid var(--line); border-radius: 9px 0 0 9px; }
+    thead th:last-child { border-right: 1px solid var(--line); border-radius: 0 9px 9px 0; }
+    tbody td { padding: 9px 10px; border-bottom: 1px solid #eff3f9; vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover td { background: #f8fafd; }
+    tbody tr.latest td { background: var(--brand-50); font-weight: 650; }
+    tbody tr.latest:hover td { background: #e6effc; }
+    td.year { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .pos { color: var(--pos); }
+    .neg { color: var(--neg); }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+      font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px;
+      background: var(--pos-bg); color: var(--pos);
+    }
+    .badge::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .badge.bad { background: var(--neg-bg); color: var(--neg); }
+    .note { color: var(--muted); font-size: 12.5px; margin: 0; padding: 4px 2px; }
+    .scroll-hint { display: none; margin: 8px 2px 0; font-size: 11.5px; color: var(--faint); }
+
+    /* ---------- 图表 ---------- */
+    .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .chart {
+      border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px 8px;
+      background: linear-gradient(180deg, #fff 0%, #fbfdff 100%);
+    }
+    .chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .chart h3 { margin: 0; font-size: 12.5px; font-weight: 600; letter-spacing: .02em; color: var(--muted); }
+    .chart-value { font-size: 15px; font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; }
+    svg { display: block; width: 100%; height: auto; margin-top: 4px; }
+    svg .grid { stroke: #edf1f7; stroke-width: 1; }
+    svg .axis { fill: #6f7c8f; font-size: 9px; font-variant-numeric: tabular-nums; }
+    svg .lbl { fill: #6f7c8f; font-size: 9.5px; }
+    svg .line { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    svg .dot { fill: #fff; stroke: currentColor; stroke-width: 2; }
+    svg .dot-last { fill: currentColor; stroke: #fff; stroke-width: 2; }
+
+    /* ---------- 页脚 ---------- */
+    .foot-note { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); }
+    .sources, .foot { color: var(--muted); font-size: 12px; line-height: 1.7; margin: 0 0 6px; }
+    .sources a { color: var(--brand); text-underline-offset: 2px; }
+    .foot { color: var(--faint); }
+
+    @media (max-width: 720px) {
+      .wrap { padding: 20px 14px 44px; }
+      .card { padding: 16px 16px; border-radius: 14px; }
+      .charts { grid-template-columns: 1fr; }
+      .factors { grid-template-columns: 1fr; }
+      .hint { margin-left: 0; width: 100%; }
+      .scroll-hint { display: block; }
+      .table-wrap {
+        -webkit-mask-image: linear-gradient(to right, #000 92%, rgba(0, 0, 0, .12) 100%);
+        mask-image: linear-gradient(to right, #000 92%, rgba(0, 0, 0, .12) 100%);
+      }
+      h1 { font-size: 22px; }
+      .brandline { gap: 12px; }
+      .logo { width: 40px; height: 40px; border-radius: 12px; font-size: 18px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+    @media print {
+      body { background: #fff; }
+      .wrap { max-width: none; padding: 0; }
+      .card { box-shadow: none; break-inside: avoid; border-color: #d5dce6; }
+      .btns, .banner, .segmented { display: none !important; }
+      .hero { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="masthead">
+      <div class="banner">
+        <span class="dot" aria-hidden="true"></span>
+        <span>内部教学工具，不对外发布 · 默认载入的是虚构示例数据 · 2026-11-13</span>
+      </div>
+      <div class="brandline">
+        <div class="logo" aria-hidden="true">杜</div>
+        <div>
+          <h1>杜邦分析工具</h1>
+          <p class="lead">把净资产收益率拆成净利率、总资产周转率和权益乘数，再用连环替代法看相邻年份的变动来自哪里。</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="head">
+        <span class="tag">数据</span>
+        <h2>载入报表</h2>
+      </div>
+      <p class="desc">可直接用示例数据，或上传 CSV。列名需为
+        <code>year, revenue, net_profit, total_assets_begin, total_assets_end, equity_begin, equity_end</code>，
+        单位与示例一致即可。</p>
+      <div class="field">
+        <span class="field-label" id="basis-caption">余额口径</span>
+        <div class="segmented" id="basis" role="radiogroup" aria-labelledby="basis-caption">
+          <label><input type="radio" name="basis" value="average" checked><span>平均余额</span></label>
+          <label><input type="radio" name="basis" value="end"><span>期末余额</span></label>
+        </div>
+        <span class="field-note">平均余额 =（期初 + 期末）÷ 2</span>
+      </div>
+      <div class="btns">
+        <button type="button" class="btn btn-primary" id="use-sample">使用示例数据</button>
+        <button type="button" class="btn btn-ghost" id="pick-file">上传 CSV</button>
+        <input type="file" id="file" accept=".csv,text/csv" hidden>
+      </div>
+      <div class="err" id="error" role="alert" hidden></div>
+    </div>
+
+    <div id="result" hidden>
+      <div class="card">
+        <div class="head">
+          <span class="tag">结果</span>
+          <h2>最近一年</h2>
+          <span class="hint" id="basis-label"></span>
+        </div>
+        <div class="hero" id="focus"></div>
+        <div class="factors" id="factors"></div>
+        <div id="verify"></div>
+      </div>
+
+      <div class="card">
+        <div class="head">
+          <span class="tag">比率</span>
+          <h2>各年杜邦比率</h2>
+        </div>
+        <div id="ratio-table"></div>
+      </div>
+
+      <div class="card">
+        <div class="head">
+          <span class="tag">分解</span>
+          <h2>连环替代贡献</h2>
+          <span class="hint">顺序：净利率 → 周转率 → 权益乘数</span>
+        </div>
+        <div id="decomp-table"></div>
+      </div>
+
+      <div class="card">
+        <div class="head">
+          <span class="tag">趋势</span>
+          <h2>四年指标走势</h2>
+        </div>
+        <div class="charts" id="charts"></div>
+      </div>
+    </div>
+
+    <footer class="foot-note">
+      <p class="sources">来源：计算公式与口径说明见本项目 README；页面默认示例数据为虚构教学数据，不代表任何真实公司。</p>
+      <p class="foot">免责：本工具仅供学习杜邦分析与连环替代法，不构成投资建议或对任何公司的评价。数据截止日期以所载入 CSV 的最晚年份为准。</p>
+    </footer>
+  </div>
+<script>
+(function () {
+  var SAMPLE = "# 示例数据：本文件中的数字是虚构的教学示例，不代表任何真实公司。\n# 单位：万元。\nyear,revenue,net_profit,total_assets_begin,total_assets_end,equity_begin,equity_end\n2020,1000,80,800,900,400,440\n2021,1200,108,900,1100,440,500\n2022,1350,108,1100,1300,500,560\n2023,1500,135,1300,1400,560,640\n2024,1600,128,1400,1600,640,700\n";
+  var TOL = 1e-8;
+  var state = { rows: null, sourceIsSample: true };
+
+  function $(id) { return document.getElementById(id); }
+  function basis() {
+    var el = document.querySelector('input[name="basis"]:checked');
+    return el ? el.value : "average";
+  }
+  function showError(msg) {
+    var box = $("error");
+    if (!msg) { box.hidden = true; box.textContent = ""; return; }
+    box.hidden = false;
+    box.textContent = msg;
+  }
+  function pct(x) { return (x * 100).toFixed(2) + "%"; }
+  function num(x, d) { return x.toFixed(d); }
+  function pp(x) {
+    var v = (x * 100).toFixed(2);
+    return (x > 0 ? "+" : "") + v + "点";
+  }
+  function signedPp(x) {
+    if (Math.abs(x) < 0.000005) return "基本持平";
+    return (x > 0 ? "上升 " : "下降 ") + Math.abs(x * 100).toFixed(2) + " 个百分点";
+  }
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function parseCsv(text) {
+    var lines = text.replace(/^\uFEFF/, "").split(/\r?\n/);
+    var header = null;
+    var rows = [];
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line || line.charAt(0) === "#") continue;
+      if (!header) { header = line.split(","); continue; }
+      var parts = line.split(",");
+      if (parts.length < 7) throw new Error("第 " + (i + 1) + " 行列数不足，请核对 CSV。");
+      var row = {
+        year: Number(parts[0]),
+        revenue: Number(parts[1]),
+        net_profit: Number(parts[2]),
+        total_assets_begin: Number(parts[3]),
+        total_assets_end: Number(parts[4]),
+        equity_begin: Number(parts[5]),
+        equity_end: Number(parts[6])
+      };
+      var keys = ["year","revenue","net_profit","total_assets_begin","total_assets_end","equity_begin","equity_end"];
+      for (var k = 0; k < keys.length; k++) {
+        if (!isFinite(row[keys[k]])) throw new Error("第 " + (i + 1) + " 行有无法识别的数字。");
+      }
+      rows.push(row);
+    }
+    if (!header) throw new Error("没有读到表头。请确认文件是 CSV。");
+    var need = "year,revenue,net_profit,total_assets_begin,total_assets_end,equity_begin,equity_end";
+    var got = header.join(",").replace(/\s/g, "");
+    if (got !== need) {
+      throw new Error("列名不对。需要：" + need + "。现在是：" + header.join(","));
+    }
+    if (!rows.length) throw new Error("表头之后没有数据行。");
+    rows.sort(function (a, b) { return a.year - b.year; });
+    return rows;
+  }
+
+  function chooseBalance(begin, end, b) {
+    if (b === "average") return (begin + end) / 2;
+    if (b === "end") return end;
+    throw new Error("不支持的余额口径。");
+  }
+
+  function computeRow(row, b) {
+    var assets = chooseBalance(row.total_assets_begin, row.total_assets_end, b);
+    var equity = chooseBalance(row.equity_begin, row.equity_end, b);
+    if (row.revenue <= 0) throw new Error(row.year + " 年营业收入必须大于 0，才能计算净利率。");
+    if (assets <= 0) throw new Error(row.year + " 年总资产余额必须大于 0，才能计算总资产周转率。");
+    if (equity <= 0) throw new Error(row.year + " 年所有者权益余额必须大于 0，才能计算权益乘数和 ROE。");
+    var net_margin = row.net_profit / row.revenue;
+    var asset_turnover = row.revenue / assets;
+    var equity_multiplier = assets / equity;
+    var roe = row.net_profit / equity;
+    var product = net_margin * asset_turnover * equity_multiplier;
+    return {
+      year: row.year,
+      net_margin: net_margin,
+      asset_turnover: asset_turnover,
+      equity_multiplier: equity_multiplier,
+      roe: roe,
+      roe_from_factors: product,
+      roe_identity_ok: Math.abs(product - roe) <= TOL
+    };
+  }
+
+  function decomposeAll(ratioRows) {
+    var out = [];
+    for (var i = 0; i < ratioRows.length - 1; i++) {
+      var base = ratioRows[i];
+      var cur = ratioRows[i + 1];
+      var a0 = base.net_margin, b0 = base.asset_turnover, c0 = base.equity_multiplier;
+      var a1 = cur.net_margin, b1 = cur.asset_turnover, c1 = cur.equity_multiplier;
+      var r0 = a0 * b0 * c0;
+      var rA = a1 * b0 * c0;
+      var rB = a1 * b1 * c0;
+      var rC = a1 * b1 * c1;
+      var cm = rA - r0, ct = rB - rA, ce = rC - rB;
+      var change = cur.roe - base.roe;
+      out.push({
+        base_year: base.year,
+        current_year: cur.year,
+        roe_change: change,
+        contrib_net_margin: cm,
+        contrib_asset_turnover: ct,
+        contrib_equity_multiplier: ce,
+        sum_matches_change: Math.abs(cm + ct + ce - change) <= TOL
+      });
+    }
+    return out;
+  }
+
+  function badge(ok, label) {
+    return "<span class='badge" + (ok ? "" : " bad") + "'>" + (ok ? (label || "通过") : "未通过") + "</span>";
+  }
+  function signClass(x) {
+    return x > TOL ? "pos" : (x < -TOL ? "neg" : "");
+  }
+
+  function renderRatios(rows) {
+    var h = "<div class='table-wrap'><table><thead><tr><th>年份</th><th class='num'>净利率</th><th class='num'>总资产周转率</th><th class='num'>权益乘数</th><th class='num'>ROE</th><th>恒等式</th></tr></thead><tbody>";
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      h += "<tr" + (i === rows.length - 1 ? " class='latest'" : "") + "><td class='year'>" + r.year + "</td>" +
+        "<td class='num'>" + pct(r.net_margin) + "</td>" +
+        "<td class='num'>" + num(r.asset_turnover, 4) + "</td>" +
+        "<td class='num'>" + num(r.equity_multiplier, 4) + "</td>" +
+        "<td class='num'>" + pct(r.roe) + "</td>" +
+        "<td>" + badge(r.roe_identity_ok) + "</td></tr>";
+    }
+    $("ratio-table").innerHTML = h + "</tbody></table></div><p class='scroll-hint'>← 左右滑动查看完整表格 →</p>";
+  }
+
+  function renderDecomp(rows) {
+    if (!rows.length) {
+      $("decomp-table").innerHTML = "<p class='note'>只有一年数据时，还没有相邻年度可以分解。</p>";
+      return;
+    }
+    var h = "<div class='table-wrap'><table><thead><tr><th>区间</th><th class='num'>ROE 变动</th><th class='num'>净利率</th><th class='num'>周转率</th><th class='num'>权益乘数</th><th>核对</th></tr></thead><tbody>";
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      h += "<tr><td class='year'>" + r.base_year + " → " + r.current_year + "</td>" +
+        "<td class='num " + signClass(r.roe_change) + "'>" + pp(r.roe_change) + "</td>" +
+        "<td class='num " + signClass(r.contrib_net_margin) + "'>" + pp(r.contrib_net_margin) + "</td>" +
+        "<td class='num " + signClass(r.contrib_asset_turnover) + "'>" + pp(r.contrib_asset_turnover) + "</td>" +
+        "<td class='num " + signClass(r.contrib_equity_multiplier) + "'>" + pp(r.contrib_equity_multiplier) + "</td>" +
+        "<td>" + badge(r.sum_matches_change) + "</td></tr>";
+    }
+    $("decomp-table").innerHTML = h + "</tbody></table></div><p class='scroll-hint'>← 左右滑动查看完整表格 →</p>";
+  }
+
+  function chart(title, points, asPercent, color, idx) {
+    var w = 340, h = 170, l = 46, r = 14, t = 14, b = 30;
+    var ys = points.map(function (p) { return p.y; });
+    var min = Math.min.apply(null, ys), max = Math.max.apply(null, ys);
+    if (min === max) { min -= 0.01; max += 0.01; }
+    var pad = (max - min) * 0.15;
+    min -= pad; max += pad;
+    var n = points.length;
+    function x(i) { return n === 1 ? l + (w - l - r) / 2 : l + i * (w - l - r) / (n - 1); }
+    function y(v) { return t + (max - v) / (max - min) * (h - t - b); }
+    function fmt(v) { return asPercent ? (v * 100).toFixed(1) + "%" : v.toFixed(2); }
+    var d = "", grid = "", ticks = "", dots = "", labels = "";
+    for (var i = 0; i < n; i++) d += (i ? " L " : "M ") + x(i).toFixed(1) + " " + y(points[i].y).toFixed(1);
+    for (var g = 0; g < 3; g++) {
+      var v = min + (max - min) * g / 2;
+      var yy = y(v);
+      grid += '<line class="grid" x1="' + l + '" y1="' + yy.toFixed(1) + '" x2="' + (w - r) + '" y2="' + yy.toFixed(1) + '"/>';
+      ticks += '<text class="axis" x="' + (l - 8) + '" y="' + (yy + 3).toFixed(1) + '" text-anchor="end">' + fmt(v) + "</text>";
+    }
+    for (var j = 0; j < n; j++) {
+      labels += '<text class="lbl" x="' + x(j).toFixed(1) + '" y="' + (h - 9) + '" text-anchor="middle">' + points[j].x + "</text>";
+      dots += '<circle class="' + (j === n - 1 ? "dot dot-last" : "dot") + '" cx="' + x(j).toFixed(1) +
+        '" cy="' + y(points[j].y).toFixed(1) + '" r="' + (j === n - 1 ? 4 : 3.2) + '"/>';
+    }
+    var area = d + " L " + x(n - 1).toFixed(1) + " " + (h - b) + " L " + x(0).toFixed(1) + " " + (h - b) + " Z";
+    var gid = "area-grad-" + idx;
+    var lastVal = asPercent ? pct(points[n - 1].y) : num(points[n - 1].y, 2);
+    return '<div class="chart" style="color:' + color + '">' +
+      '<div class="chart-head"><h3>' + esc(title) + '</h3><span class="chart-value">' + lastVal + '</span></div>' +
+      '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' + esc(title) + ' 逐年走势">' +
+      '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="' + color + '" stop-opacity="0.22"/>' +
+      '<stop offset="100%" stop-color="' + color + '" stop-opacity="0.015"/>' +
+      '</linearGradient></defs>' +
+      grid + '<path d="' + area + '" fill="url(#' + gid + ')"/>' +
+      '<path class="line" d="' + d + '"/>' + dots + labels + ticks + '</svg></div>';
+  }
+
+  function renderCharts(rows) {
+    var defs = [
+      { t: "ROE", k: "roe", p: true, c: "#1f5fae" },
+      { t: "净利率", k: "net_margin", p: true, c: "#0e7c8c" },
+      { t: "总资产周转率", k: "asset_turnover", p: false, c: "#5b4fcf" },
+      { t: "权益乘数", k: "equity_multiplier", p: false, c: "#b06a12" }
+    ];
+    $("charts").innerHTML = defs.map(function (d, i) {
+      return chart(d.t, rows.map(function (r) { return { x: r.year, y: r[d.k] }; }), d.p, d.c, i);
+    }).join("");
+  }
+
+  function factorTile(label, value, formula, accent) {
+    return '<div class="factor" style="--accent:' + accent + '">' +
+      '<div class="k">' + label + '</div>' +
+      '<div class="v">' + value + '</div>' +
+      '<div class="f">' + formula + '</div></div>';
+  }
+
+  function render() {
+    showError("");
+    try {
+      var b = basis();
+      var ratios = [];
+      for (var i = 0; i < state.rows.length; i++) ratios.push(computeRow(state.rows[i], b));
+      var decomp = decomposeAll(ratios);
+      var last = ratios[ratios.length - 1];
+      var balWord = b === "average" ? "平均" : "期末";
+      $("basis-label").textContent = (b === "average" ? "平均余额" : "期末余额") + (state.sourceIsSample ? " · 示例数据" : " · 已上传文件");
+
+      var lastChange = decomp.length ? decomp[decomp.length - 1] : null;
+      var deltaClass = "hero-delta", arrow = "→", deltaText = "首年数据，暂无同比";
+      if (lastChange) {
+        var ch = lastChange.roe_change;
+        deltaText = "较 " + lastChange.base_year + " 年 " + signedPp(ch);
+        if (ch > 0.000005) { deltaClass += " up"; arrow = "↑"; }
+        else if (ch < -0.000005) { deltaClass += " down"; arrow = "↓"; }
+      }
+      $("focus").innerHTML =
+        '<div class="hero-label"><b>' + last.year + '</b> 年净资产收益率 <span class="hero-pill">ROE</span></div>' +
+        '<div class="hero-value">' + num(last.roe * 100, 2) + '<span class="hero-unit">%</span></div>' +
+        '<div class="' + deltaClass + '"><span class="arrow">' + arrow + '</span>' + deltaText + '</div>' +
+        '<div class="hero-formula">净利率 <b>' + pct(last.net_margin) + '</b> × 总资产周转率 <b>' +
+        num(last.asset_turnover, 4) + '</b> × 权益乘数 <b>' + num(last.equity_multiplier, 4) + '</b></div>';
+
+      $("factors").innerHTML =
+        factorTile("净利率", pct(last.net_margin), "净利润 ÷ 营业收入", "#1f5fae") +
+        factorTile("总资产周转率", num(last.asset_turnover, 4), "营业收入 ÷ " + balWord + "总资产", "#0e7c8c") +
+        factorTile("权益乘数", num(last.equity_multiplier, 4), "总资产 ÷ " + balWord + "所有者权益", "#5b4fcf");
+
+      $("verify").innerHTML = '<div class="verify' + (last.roe_identity_ok ? "" : " bad") + '">' +
+        (last.roe_identity_ok
+          ? "ROE 恒等式校验通过：净利率 × 周转率 × 权益乘数 = 净利润 ÷ 所有者权益"
+          : "ROE 恒等式未通过，请检查数据口径") + '</div>';
+
+      renderRatios(ratios);
+      renderDecomp(decomp);
+      renderCharts(ratios);
+      $("result").hidden = false;
+    } catch (e) {
+      $("result").hidden = true;
+      showError(e.message || String(e));
+    }
+  }
+
+  function loadSample() {
+    state.rows = parseCsv(SAMPLE);
+    state.sourceIsSample = true;
+    render();
+  }
+
+  $("use-sample").addEventListener("click", loadSample);
+  $("pick-file").addEventListener("click", function () { $("file").click(); });
+  $("file").addEventListener("change", function () {
+    var f = $("file").files && $("file").files[0];
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        state.rows = parseCsv(String(reader.result));
+        state.sourceIsSample = false;
+        render();
+      } catch (e) {
+        $("result").hidden = true;
+        showError(e.message || String(e));
+      }
+    };
+    reader.readAsText(f, "utf-8");
+  });
+  document.getElementById("basis").addEventListener("change", function () {
+    if (state.rows) render();
+  });
+  loadSample();
+})();
+</script>
+</body>
+</html>

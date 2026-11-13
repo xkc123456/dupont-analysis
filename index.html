@@ -1,34 +1,128 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f4f7fb" id="theme-color-meta">
   <meta name="description" content="杜邦分析工具：把 ROE 拆成净利率、总资产周转率与权益乘数，并用连环替代法分解相邻年度的变动来源。">
   <title>杜邦分析工具 · ROE 拆解</title>
+  <script>
+    (function () {
+      var KEY = "dupont-theme";
+      var saved = null;
+      try { saved = localStorage.getItem(KEY); } catch (e) {}
+      var sysDark = false;
+      try { sysDark = !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches); } catch (e) {}
+      var theme = (saved === "dark" || saved === "light") ? saved : (sysDark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+      var m = document.getElementById("theme-color-meta");
+      if (m) m.setAttribute("content", theme === "dark" ? "#0c1118" : "#f4f7fb");
+    })();
+  </script>
   <style>
     :root {
+      color-scheme: light;
       --bg: #f4f7fb;
+      --glow-a: #e6effc;
+      --glow-a0: rgba(230, 239, 252, 0);
+      --glow-b: #f0eafb;
+      --glow-b0: rgba(240, 234, 251, 0);
       --ink: #17202e;
       --ink-2: #3d4859;
       --muted: #5f6d80;
       --faint: #6f7c8f;
       --line: #e5ebf3;
+      --line-2: #dbe4ef;
       --card: #ffffff;
+      --card-soft: #fbfcfe;
+      --card-head: #f7f9fc;
+      --row-line: #eff3f9;
+      --row-hover: #f8fafd;
+      --seg-bg: #f1f4f9;
       --brand: #1f5fae;
-      --brand-2: #17457f;
+      --brand-hover: #2a74cf;
       --brand-50: #eef4fd;
-      --navy: #0f2d55;
+      --brand-50-hover: #e6effc;
+      --sel: #cfe1fa;
       --pos: #0d7a63;
       --pos-bg: #e7f6f1;
       --neg: #b0443b;
       --neg-bg: #fdeeec;
+      --neg-line: #f6cfc9;
       --warn-bg: #fffaf0;
       --warn-line: #f2e0c0;
       --warn-ink: #8a5a12;
-      --radius: 16px;
+      --btn-from: #2468bd;
+      --btn-to: #1b5196;
+      --btn-from-hover: #2a74cf;
+      --btn-to-hover: #1f5aa4;
+      --hero-from: #0f2d55;
+      --hero-mid: #17457f;
+      --hero-to: #1f5fae;
+      --hero-line: rgba(255, 255, 255, .14);
+      --hero-ink: rgba(255, 255, 255, .74);
       --shadow-sm: 0 1px 2px rgba(15, 35, 70, .05);
       --shadow: 0 1px 2px rgba(15, 35, 70, .04), 0 14px 32px -20px rgba(15, 35, 70, .28);
+      --hero-shadow: 0 16px 34px -20px rgba(15, 45, 85, .9);
+      --chart-1: #1f5fae;
+      --chart-2: #0e7c8c;
+      --chart-3: #5b4fcf;
+      --chart-4: #b06a12;
+      --grid: #edf1f7;
+      --axis: #6f7c8f;
+      --radius: 16px;
+    }
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0c1118;
+      --glow-a: rgba(40, 74, 126, .5);
+      --glow-a0: rgba(40, 74, 126, 0);
+      --glow-b: rgba(64, 46, 104, .42);
+      --glow-b0: rgba(64, 46, 104, 0);
+      --ink: #e8eef7;
+      --ink-2: #bec9d9;
+      --muted: #92a0b5;
+      --faint: #8593a8;
+      --line: #222c3a;
+      --line-2: #2c3849;
+      --card: #141a23;
+      --card-soft: #121821;
+      --card-head: #19212d;
+      --row-line: #1f2835;
+      --row-hover: #1b2431;
+      --seg-bg: #101722;
+      --brand: #7db2ff;
+      --brand-hover: #9cc5ff;
+      --brand-50: rgba(125, 178, 255, .12);
+      --brand-50-hover: rgba(125, 178, 255, .18);
+      --sel: rgba(125, 178, 255, .34);
+      --pos: #4fd0ae;
+      --pos-bg: rgba(79, 208, 174, .13);
+      --neg: #ff9b91;
+      --neg-bg: rgba(255, 155, 145, .12);
+      --neg-line: rgba(255, 155, 145, .3);
+      --warn-bg: #241d12;
+      --warn-line: #43341c;
+      --warn-ink: #ecc389;
+      --btn-from: #2f78cf;
+      --btn-to: #1f5aa4;
+      --btn-from-hover: #3d8ae0;
+      --btn-to-hover: #2465b4;
+      --hero-from: #14273f;
+      --hero-mid: #1a3a63;
+      --hero-to: #245c9b;
+      --hero-line: rgba(255, 255, 255, .12);
+      --hero-ink: rgba(255, 255, 255, .72);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+      --shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 18px 40px -24px rgba(0, 0, 0, .9);
+      --hero-shadow: 0 18px 40px -24px rgba(0, 0, 0, .9);
+      --chart-1: #6ea8ff;
+      --chart-2: #45c8d6;
+      --chart-3: #a99bff;
+      --chart-4: #e0a24a;
+      --grid: #232d3b;
+      --axis: #8b99ae;
     }
     *, *::before, *::after { box-sizing: border-box; }
     [hidden] { display: none !important; }
@@ -39,13 +133,14 @@
       color: var(--ink);
       font: 14px/1.65 "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Segoe UI", system-ui, sans-serif;
       background:
-        radial-gradient(1100px 520px at 8% -12%, #e6effc 0%, rgba(230, 239, 252, 0) 62%),
-        radial-gradient(900px 460px at 102% -4%, #f0eafb 0%, rgba(240, 234, 251, 0) 58%),
+        radial-gradient(1100px 520px at 8% -12%, var(--glow-a) 0%, var(--glow-a0) 62%),
+        radial-gradient(900px 460px at 102% -4%, var(--glow-b) 0%, var(--glow-b0) 58%),
         var(--bg);
       background-attachment: fixed;
       -webkit-font-smoothing: antialiased;
+      transition: background-color .35s ease, color .35s ease;
     }
-    ::selection { background: #cfe1fa; color: var(--navy); }
+    ::selection { background: var(--sel); color: var(--ink); }
     .wrap { max-width: 900px; margin: 0 auto; padding: 26px 20px 56px; }
 
     /* ---------- 顶部 ---------- */
@@ -54,12 +149,14 @@
       gap: 8px; text-align: center;
       background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-ink);
       border-radius: 12px; padding: 9px 14px; font-size: 12.5px; margin: 0 0 22px;
+      transition: background-color .3s ease, border-color .3s ease, color .3s ease;
     }
     .banner .dot {
       width: 7px; height: 7px; border-radius: 50%; background: #dfa03a; flex: none;
       box-shadow: 0 0 0 3px rgba(223, 160, 58, .18);
     }
     .brandline { display: flex; align-items: flex-start; gap: 16px; margin: 0 0 22px; }
+    .brand-text { flex: 1; min-width: 0; }
     .logo {
       flex: none; width: 46px; height: 46px; border-radius: 14px;
       display: grid; place-items: center;
@@ -69,25 +166,40 @@
     }
     h1 { font-size: 26px; line-height: 1.25; font-weight: 700; letter-spacing: -.015em; margin: 0 0 4px; }
     .lead { color: var(--muted); margin: 0; font-size: 14px; max-width: 62ch; text-wrap: pretty; }
+    .theme-toggle {
+      flex: none; margin-left: auto; width: 38px; height: 38px; padding: 0;
+      display: grid; place-items: center; border-radius: 12px;
+      background: var(--card); border: 1px solid var(--line); color: var(--muted);
+      cursor: pointer; box-shadow: var(--shadow-sm);
+      transition: color .18s ease, border-color .18s ease, background-color .18s ease, transform .18s ease;
+    }
+    .theme-toggle:hover { color: var(--brand); border-color: var(--line-2); transform: translateY(-1px); }
+    .theme-toggle:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+    .theme-toggle svg { width: 17px; height: 17px; display: block; }
+    .theme-toggle .sun { display: none; }
+    [data-theme="dark"] .theme-toggle .moon { display: none; }
+    [data-theme="dark"] .theme-toggle .sun { display: block; }
 
     /* ---------- 卡片 ---------- */
     .card {
       background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
       padding: 20px 22px; margin: 0 0 16px; box-shadow: var(--shadow);
+      transition: background-color .3s ease, border-color .3s ease, box-shadow .3s ease;
     }
     .head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 14px; }
     .tag {
       font-size: 11.5px; font-weight: 650; letter-spacing: .08em;
       color: var(--brand); background: var(--brand-50); border-radius: 7px; padding: 3px 8px;
-      white-space: nowrap;
+      white-space: nowrap; transition: background-color .3s ease, color .3s ease;
     }
     .head h2 { font-size: 16.5px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
     .hint { color: var(--muted); font-size: 12.5px; margin-left: auto; }
     .desc { color: var(--ink-2); margin: 0 0 16px; font-size: 13.5px; }
     code {
       font: 12px/1.5 ui-monospace, "Cascadia Code", "Consolas", monospace;
-      background: #f3f6fb; border: 1px solid var(--line); border-radius: 6px;
-      padding: 1px 5px; color: #2c4a72; word-break: break-word;
+      background: var(--card-soft); border: 1px solid var(--line); border-radius: 6px;
+      padding: 1px 5px; color: var(--ink-2); word-break: break-word;
+      transition: background-color .3s ease, border-color .3s ease, color .3s ease;
     }
 
     /* ---------- 表单控件 ---------- */
@@ -96,18 +208,19 @@
     .field-note { font-size: 12px; color: var(--faint); }
     .segmented {
       display: inline-flex; gap: 2px; padding: 3px;
-      background: #f1f4f9; border: 1px solid var(--line); border-radius: 12px;
+      background: var(--seg-bg); border: 1px solid var(--line); border-radius: 12px;
+      transition: background-color .3s ease, border-color .3s ease;
     }
     .segmented label { position: relative; margin: 0; }
     .segmented input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: pointer; }
     .segmented span {
       display: block; padding: 5px 15px; border-radius: 9px;
       font-size: 13px; color: var(--muted);
-      transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+      transition: background-color .18s ease, color .18s ease, box-shadow .18s ease;
     }
     .segmented input:checked + span {
-      background: #fff; color: var(--brand); font-weight: 600;
-      box-shadow: 0 1px 2px rgba(15, 35, 70, .1), 0 0 0 1px rgba(31, 95, 174, .1);
+      background: var(--card); color: var(--brand); font-weight: 600;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, .12), 0 0 0 1px var(--line-2);
     }
     .segmented input:focus-visible + span { outline: 2px solid var(--brand); outline-offset: 2px; }
     .btns { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -119,31 +232,32 @@
     .btn:active { transform: translateY(1px); }
     .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
     .btn-primary {
-      color: #fff; background: linear-gradient(180deg, #2468bd, #1b5196);
+      color: #fff; background: linear-gradient(180deg, var(--btn-from), var(--btn-to));
       box-shadow: 0 8px 18px -10px rgba(27, 81, 150, .95), inset 0 1px 0 rgba(255, 255, 255, .2);
     }
     .btn-primary:hover {
-      background: linear-gradient(180deg, #2a74cf, #1f5aa4);
+      background: linear-gradient(180deg, var(--btn-from-hover), var(--btn-to-hover));
       box-shadow: 0 12px 22px -12px rgba(27, 81, 150, .95), inset 0 1px 0 rgba(255, 255, 255, .24);
     }
-    .btn-ghost { background: #fff; border-color: #dbe4ef; color: var(--ink-2); box-shadow: var(--shadow-sm); }
-    .btn-ghost:hover { border-color: #bfd3ea; background: #f8fbff; color: var(--brand); }
+    .btn-ghost { background: var(--card); border-color: var(--line-2); color: var(--ink-2); box-shadow: var(--shadow-sm); }
+    .btn-ghost:hover { border-color: var(--brand); background: var(--brand-50); color: var(--brand); }
     .err {
       display: flex; gap: 8px; margin: 14px 0 0; padding: 10px 12px;
-      border-radius: 10px; background: var(--neg-bg); border: 1px solid #f6cfc9;
-      color: #98352c; font-size: 12.5px; line-height: 1.55;
+      border-radius: 10px; background: var(--neg-bg); border: 1px solid var(--neg-line);
+      color: var(--neg); font-size: 12.5px; line-height: 1.55;
     }
     .err::before {
       content: "!"; flex: none; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%;
-      background: #d9584a; color: #fff; font-size: 11px; font-weight: 700;
+      background: var(--neg); color: var(--card); font-size: 11px; font-weight: 700;
       display: grid; place-items: center;
     }
 
     /* ---------- 结果主视觉 ---------- */
     .hero {
       position: relative; overflow: hidden; border-radius: 14px; padding: 20px 22px;
-      color: #fff; background: linear-gradient(135deg, #0f2d55 0%, #17457f 55%, #1f5fae 100%);
-      box-shadow: 0 16px 34px -20px rgba(15, 45, 85, .9);
+      color: #fff; background: linear-gradient(135deg, var(--hero-from) 0%, var(--hero-mid) 55%, var(--hero-to) 100%);
+      box-shadow: var(--hero-shadow);
+      transition: background-color .3s ease, box-shadow .3s ease;
     }
     .hero::before {
       content: ""; position: absolute; width: 300px; height: 300px; right: -100px; top: -140px;
@@ -185,8 +299,8 @@
     .hero-delta.down { color: #ffd9d3; background: rgba(255, 120, 100, .16); border-color: rgba(255, 150, 130, .3); }
     .hero-formula {
       position: relative; margin-top: 16px; padding-top: 13px;
-      border-top: 1px solid rgba(255, 255, 255, .14);
-      font-size: 12.5px; color: rgba(255, 255, 255, .74); font-variant-numeric: tabular-nums;
+      border-top: 1px solid var(--hero-line);
+      font-size: 12.5px; color: var(--hero-ink); font-variant-numeric: tabular-nums;
     }
     .hero-formula b { color: #fff; font-weight: 650; }
 
@@ -194,7 +308,8 @@
     .factors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0 0; }
     .factor {
       position: relative; overflow: hidden;
-      background: #fbfcfe; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+      background: var(--card-soft); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+      transition: background-color .3s ease, border-color .3s ease;
     }
     .factor::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--accent, var(--brand)); opacity: .8; }
     .factor .k { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
@@ -212,21 +327,25 @@
     .verify.bad::before { content: "!"; }
 
     /* ---------- 表格 ---------- */
-    .table-wrap { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
+    .table-wrap {
+      overflow-x: auto; margin: 0 -4px; padding: 0 4px;
+      scrollbar-width: thin; scrollbar-color: var(--line-2) transparent;
+    }
     table { width: 100%; min-width: 560px; border-collapse: separate; border-spacing: 0; font-size: 13px; }
     thead th {
       text-align: left; font-size: 11.5px; font-weight: 600; letter-spacing: .06em;
-      color: var(--muted); background: #f7f9fc; padding: 9px 10px;
+      color: var(--muted); background: var(--card-head); padding: 9px 10px;
       border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
       white-space: nowrap;
+      transition: background-color .3s ease, border-color .3s ease, color .3s ease;
     }
     thead th:first-child { border-left: 1px solid var(--line); border-radius: 9px 0 0 9px; }
     thead th:last-child { border-right: 1px solid var(--line); border-radius: 0 9px 9px 0; }
-    tbody td { padding: 9px 10px; border-bottom: 1px solid #eff3f9; vertical-align: middle; }
+    tbody td { padding: 9px 10px; border-bottom: 1px solid var(--row-line); vertical-align: middle; transition: background-color .2s ease, border-color .3s ease; }
     tbody tr:last-child td { border-bottom: 0; }
-    tbody tr:hover td { background: #f8fafd; }
+    tbody tr:hover td { background: var(--row-hover); }
     tbody tr.latest td { background: var(--brand-50); font-weight: 650; }
-    tbody tr.latest:hover td { background: #e6effc; }
+    tbody tr.latest:hover td { background: var(--brand-50-hover); }
     td.year { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
     td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
     .pos { color: var(--pos); }
@@ -245,18 +364,19 @@
     .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .chart {
       border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px 8px;
-      background: linear-gradient(180deg, #fff 0%, #fbfdff 100%);
+      background: linear-gradient(180deg, var(--card) 0%, var(--card-soft) 100%);
+      transition: background-color .3s ease, border-color .3s ease;
     }
     .chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
     .chart h3 { margin: 0; font-size: 12.5px; font-weight: 600; letter-spacing: .02em; color: var(--muted); }
     .chart-value { font-size: 15px; font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; }
     svg { display: block; width: 100%; height: auto; margin-top: 4px; }
-    svg .grid { stroke: #edf1f7; stroke-width: 1; }
-    svg .axis { fill: #6f7c8f; font-size: 9px; font-variant-numeric: tabular-nums; }
-    svg .lbl { fill: #6f7c8f; font-size: 9.5px; }
+    svg .grid { stroke: var(--grid); stroke-width: 1; }
+    svg .axis { fill: var(--axis); font-size: 9px; font-variant-numeric: tabular-nums; }
+    svg .lbl { fill: var(--axis); font-size: 9.5px; }
     svg .line { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    svg .dot { fill: #fff; stroke: currentColor; stroke-width: 2; }
-    svg .dot-last { fill: currentColor; stroke: #fff; stroke-width: 2; }
+    svg .dot { fill: var(--card); stroke: currentColor; stroke-width: 2; }
+    svg .dot-last { fill: currentColor; stroke: var(--card); stroke-width: 2; }
 
     /* ---------- 页脚 ---------- */
     .foot-note { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); }
@@ -278,6 +398,8 @@
       h1 { font-size: 22px; }
       .brandline { gap: 12px; }
       .logo { width: 40px; height: 40px; border-radius: 12px; font-size: 18px; }
+      .theme-toggle { width: 34px; height: 34px; border-radius: 10px; }
+      .theme-toggle svg { width: 16px; height: 16px; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
@@ -286,8 +408,14 @@
       body { background: #fff; }
       .wrap { max-width: none; padding: 0; }
       .card { box-shadow: none; break-inside: avoid; border-color: #d5dce6; }
-      .btns, .banner, .segmented { display: none !important; }
+      .btns, .banner, .segmented, .theme-toggle { display: none !important; }
       .hero { box-shadow: none; }
+      :root[data-theme="dark"] {
+        --card: #fff; --card-soft: #fff; --card-head: #f7f9fc; --bg: #fff;
+        --ink: #111; --ink-2: #333; --muted: #555; --faint: #666;
+        --line: #dcdfe6; --line-2: #cfd6e0; --row-line: #eef1f6; --row-hover: #fafbfd;
+        --grid: #eceff5; --axis: #666;
+      }
     }
   </style>
 </head>
@@ -300,10 +428,19 @@
       </div>
       <div class="brandline">
         <div class="logo" aria-hidden="true">杜</div>
-        <div>
+        <div class="brand-text">
           <h1>杜邦分析工具</h1>
           <p class="lead">把净资产收益率拆成净利率、总资产周转率和权益乘数，再用连环替代法看相邻年份的变动来自哪里。</p>
         </div>
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-label="切换到深色模式" aria-pressed="false" title="切换到深色模式">
+          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2"></circle>
+            <path d="M12 2.4v2.2M12 19.4v2.2M2.4 12h2.2M19.4 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"></path>
+          </svg>
+          <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20.2 14.4A8.4 8.4 0 0 1 9.6 3.8a8.6 8.6 0 1 0 10.6 10.6Z"></path>
+          </svg>
+        </button>
       </div>
     </header>
 
@@ -378,6 +515,7 @@
 (function () {
   var SAMPLE = "# 示例数据：本文件中的数字是虚构的教学示例，不代表任何真实公司。\n# 单位：万元。\nyear,revenue,net_profit,total_assets_begin,total_assets_end,equity_begin,equity_end\n2020,1000,80,800,900,400,440\n2021,1200,108,900,1100,440,500\n2022,1350,108,1100,1300,500,560\n2023,1500,135,1300,1400,560,640\n2024,1600,128,1400,1600,640,700\n";
   var TOL = 1e-8;
+  var THEME_KEY = "dupont-theme";
   var state = { rows: null, sourceIsSample: true };
 
   function $(id) { return document.getElementById(id); }
@@ -403,6 +541,33 @@
   }
   function esc(s) {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  /* ---------- 主题 ---------- */
+  function isDark() { return document.documentElement.getAttribute("data-theme") === "dark"; }
+  function applyThemeMeta(dark) {
+    var m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.setAttribute("content", dark ? "#0c1118" : "#f4f7fb");
+  }
+  function syncThemeButton() {
+    var btn = $("theme-toggle");
+    if (!btn) return;
+    var dark = isDark();
+    var label = dark ? "切换到浅色模式" : "切换到深色模式";
+    btn.setAttribute("aria-label", label);
+    btn.setAttribute("title", label);
+    btn.setAttribute("aria-pressed", dark ? "true" : "false");
+  }
+  function setTheme(dark, persist) {
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    if (persist) {
+      try { localStorage.setItem(THEME_KEY, dark ? "dark" : "light"); } catch (e) {}
+    }
+    applyThemeMeta(dark);
+    syncThemeButton();
+  }
+  function savedTheme() {
+    try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; }
   }
 
   function parseCsv(text) {
@@ -565,8 +730,8 @@
       '<div class="chart-head"><h3>' + esc(title) + '</h3><span class="chart-value">' + lastVal + '</span></div>' +
       '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' + esc(title) + ' 逐年走势">' +
       '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
-      '<stop offset="0%" stop-color="' + color + '" stop-opacity="0.22"/>' +
-      '<stop offset="100%" stop-color="' + color + '" stop-opacity="0.015"/>' +
+      '<stop offset="0%" style="stop-color:' + color + ';stop-opacity:.22"/>' +
+      '<stop offset="100%" style="stop-color:' + color + ';stop-opacity:.015"/>' +
       '</linearGradient></defs>' +
       grid + '<path d="' + area + '" fill="url(#' + gid + ')"/>' +
       '<path class="line" d="' + d + '"/>' + dots + labels + ticks + '</svg></div>';
@@ -574,10 +739,10 @@
 
   function renderCharts(rows) {
     var defs = [
-      { t: "ROE", k: "roe", p: true, c: "#1f5fae" },
-      { t: "净利率", k: "net_margin", p: true, c: "#0e7c8c" },
-      { t: "总资产周转率", k: "asset_turnover", p: false, c: "#5b4fcf" },
-      { t: "权益乘数", k: "equity_multiplier", p: false, c: "#b06a12" }
+      { t: "ROE", k: "roe", p: true, c: "var(--chart-1)" },
+      { t: "净利率", k: "net_margin", p: true, c: "var(--chart-2)" },
+      { t: "总资产周转率", k: "asset_turnover", p: false, c: "var(--chart-3)" },
+      { t: "权益乘数", k: "equity_multiplier", p: false, c: "var(--chart-4)" }
     ];
     $("charts").innerHTML = defs.map(function (d, i) {
       return chart(d.t, rows.map(function (r) { return { x: r.year, y: r[d.k] }; }), d.p, d.c, i);
@@ -618,9 +783,9 @@
         num(last.asset_turnover, 4) + '</b> × 权益乘数 <b>' + num(last.equity_multiplier, 4) + '</b></div>';
 
       $("factors").innerHTML =
-        factorTile("净利率", pct(last.net_margin), "净利润 ÷ 营业收入", "#1f5fae") +
-        factorTile("总资产周转率", num(last.asset_turnover, 4), "营业收入 ÷ " + balWord + "总资产", "#0e7c8c") +
-        factorTile("权益乘数", num(last.equity_multiplier, 4), "总资产 ÷ " + balWord + "所有者权益", "#5b4fcf");
+        factorTile("净利率", pct(last.net_margin), "净利润 ÷ 营业收入", "var(--chart-1)") +
+        factorTile("总资产周转率", num(last.asset_turnover, 4), "营业收入 ÷ " + balWord + "总资产", "var(--chart-2)") +
+        factorTile("权益乘数", num(last.equity_multiplier, 4), "总资产 ÷ " + balWord + "所有者权益", "var(--chart-3)");
 
       $("verify").innerHTML = '<div class="verify' + (last.roe_identity_ok ? "" : " bad") + '">' +
         (last.roe_identity_ok
@@ -664,6 +829,22 @@
   document.getElementById("basis").addEventListener("change", function () {
     if (state.rows) render();
   });
+
+  $("theme-toggle").addEventListener("click", function () {
+    setTheme(!isDark(), true);
+  });
+  syncThemeButton();
+  applyThemeMeta(isDark());
+
+  if (window.matchMedia) {
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    var onSystemTheme = function (e) {
+      if (!savedTheme()) setTheme(!!e.matches, false);
+    };
+    if (mq.addEventListener) mq.addEventListener("change", onSystemTheme);
+    else if (mq.addListener) mq.addListener(onSystemTheme);
+  }
+
   loadSample();
 })();
 </script>
